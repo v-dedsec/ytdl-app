@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TubeGrab — YouTube Downloader</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0b0c10;
+    --surface: #13151c;
+    --card: #1a1d28;
+    --border: #252836;
+    --accent: #ff3d5a;
+    --accent2: #ff7a45;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --success: #22d3a5;
+    --radius: 16px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 80px;
+    background-image:
+      radial-gradient(ellipse 60% 40% at 50% -10%, rgba(255,61,90,0.18) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 30% at 80% 100%, rgba(255,122,69,0.1) 0%, transparent 60%);
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #ff3d5a 0%, #ff7a45 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .tagline {
+    color: var(--muted);
+    font-size: 1rem;
+    font-weight: 300;
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 36px 32px;
+    width: 100%;
+    max-width: 620px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    animation: fadeUp 0.7s 0.1s ease both;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    padding: 14px 18px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  .mode-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    letter-spacing: 0.3px;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 18px rgba(255,61,90,0.35);
+  }
+
+  .tab:not(.active):hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .tab .icon { margin-right: 6px; }
+
+  .btn {
+    width: 100%;
+    padding: 15px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    letter-spacing: 0.5px;
+    transition: opacity 0.2s, transform 0.15s;
+    box-shadow: 0 4px 20px rgba(255,61,90,0.3);
+  }
+  .btn:hover { opacity: 0.92; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Progress section */
+  #status-box {
+    margin-top: 28px;
+    display: none;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .status-label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  .progress-bar-wrap {
+    background: var(--surface);
+    border-radius: 50px;
+    height: 6px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 50px;
+    transition: width 0.4s ease;
+  }
+
+  .progress-bar.indeterminate {
+    width: 40%;
+    animation: indeterminate 1.2s infinite ease-in-out;
+  }
+
+  @keyframes indeterminate {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(350%); }
+  }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .result-info { flex: 1; min-width: 0; }
+  .result-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .result-sub {
+    font-size: 0.78rem;
+    color: var(--success);
+    margin-top: 3px;
+    font-weight: 500;
+  }
+
+  .dl-btn {
+    padding: 10px 20px;
+    background: var(--success);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .dl-btn:hover { opacity: 0.85; }
+
+  .error-msg {
+    background: rgba(255,61,90,0.12);
+    border: 1px solid rgba(255,61,90,0.3);
+    border-radius: 10px;
+    padding: 14px 18px;
+    color: var(--accent);
+    font-size: 0.88rem;
+  }
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 32px;
+    max-width: 620px;
+    width: 100%;
+    animation: fadeUp 0.7s 0.25s ease both;
+  }
+
+  .feat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 16px;
+    text-align: center;
+  }
+  .feat-icon { font-size: 1.5rem; margin-bottom: 8px; }
+  .feat-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem; }
+  .feat-desc { color: var(--muted); font-size: 0.75rem; margin-top: 4px; }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">TubeGrab</div>
+  <p class="tagline">Download YouTube videos & convert to MP3 — fast, free, no limits.</p>
+</header>
+
+<div class="card">
+  <!-- Mode tabs -->
+  <div class="mode-tabs">
+    <div class="tab active" id="tab-video" onclick="setMode('video')">
+      <span class="icon">🎬</span> Video (MP4)
+    </div>
+    <div class="tab" id="tab-mp3" onclick="setMode('mp3')">
+      <span class="icon">🎵</span> Audio (MP3)
+    </div>
+  </div>
+
+  <!-- URL input -->
+  <div class="input-row">
+    <input type="text" id="url-input" placeholder="Paste YouTube URL here…" />
+  </div>
+
+  <button class="btn" id="grab-btn" onclick="startDownload()">⬇ Grab It</button>
+
+  <!-- Status -->
+  <div id="status-box">
+    <div class="status-label" id="status-text">Starting…</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar indeterminate" id="progress-bar"></div>
+    </div>
+    <div id="result-area"></div>
+  </div>
+</div>
+
+<div class="features">
+  <div class="feat">
+    <div class="feat-icon">⚡</div>
+    <div class="feat-title">Best Quality</div>
+    <div class="feat-desc">Highest available resolution & 192kbps MP3</div>
+  </div>
+  <div class="feat">
+    <div class="feat-icon">🔒</div>
+    <div class="feat-title">No Sign-up</div>
+    <div class="feat-desc">Paste, click, download. That's it.</div>
+  </div>
+  <div class="feat">
+    <div class="feat-icon">🎵</div>
+    <div class="feat-title">MP3 Convert</div>
+    <div class="feat-desc">Extract audio from any YouTube video</div>
+  </div>
+</div>
+
+<script>
+  let mode = 'video';
+  let pollTimer = null;
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('tab-video').classList.toggle('active', m === 'video');
+    document.getElementById('tab-mp3').classList.toggle('active', m === 'mp3');
+  }
+
+  async function startDownload() {
+    const url = document.getElementById('url-input').value.trim();
+    if (!url) { alert('Please paste a YouTube URL.'); return; }
+
+    const btn = document.getElementById('grab-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Processing…';
+
+    const box = document.getElementById('status-box');
+    box.style.display = 'block';
+    document.getElementById('status-text').textContent = 'Queueing download…';
+    document.getElementById('result-area').innerHTML = '';
+    const bar = document.getElementById('progress-bar');
+    bar.className = 'progress-bar indeterminate';
+
+    try {
+      const res = await fetch('/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, mode })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      pollStatus(data.job_id);
+    } catch (e) {
+      showError(e.message);
+      resetBtn();
+    }
+  }
+
+  function pollStatus(jobId) {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      try {
+        const res = await fetch(`/status/${jobId}`);
+        const data = await res.json();
+
+        if (data.status === 'downloading') {
+          document.getElementById('status-text').textContent = 'Downloading… please wait';
+        } else if (data.status === 'done') {
+          clearInterval(pollTimer);
+          document.getElementById('status-text').textContent = 'Ready to download!';
+          const bar = document.getElementById('progress-bar');
+          bar.className = 'progress-bar';
+          bar.style.width = '100%';
+          showResult(data.filename, data.title, mode);
+          resetBtn();
+        } else if (data.status === 'error') {
+          clearInterval(pollTimer);
+          showError(data.error || 'Unknown error');
+          resetBtn();
+        }
+      } catch (e) {
+        clearInterval(pollTimer);
+        showError('Connection error');
+        resetBtn();
+      }
+    }, 1500);
+  }
+
+  function showResult(filename, title, m) {
+    const ext = m === 'mp3' ? 'MP3 Audio' : 'MP4 Video';
+    document.getElementById('result-area').innerHTML = `
+      <div class="result-card">
+        <div class="result-info">
+          <div class="result-title" title="${title}">${title}</div>
+          <div class="result-sub">✓ ${ext} ready</div>
+        </div>
+        <a class="dl-btn" href="/download/${filename}" download>⬇ Save</a>
+      </div>`;
+  }
+
+  function showError(msg) {
+    document.getElementById('status-text').textContent = 'Error';
+    document.getElementById('progress-bar').className = 'progress-bar';
+    document.getElementById('result-area').innerHTML =
+      `<div class="error-msg">❌ ${msg}</div>`;
+  }
+
+  function resetBtn() {
+    const btn = document.getElementById('grab-btn');
+    btn.disabled = false;
+    btn.textContent = '⬇ Grab It';
+  }
+</script>
+</body>
+</html>
